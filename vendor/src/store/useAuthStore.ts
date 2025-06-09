@@ -938,15 +938,21 @@ const useAuthStore = create<AuthStore>()(
       // Stripe Connect functions
       createStripeConnectAccount: async (accountType = 'EXPRESS') => {
         try {
-          const { accessToken } = get();
+          const { accessToken, user } = get();
           if (!accessToken) {
             throw new Error('Not authenticated');
+          }
+          
+          if (!user?.vendor?.id) {
+            throw new Error('No vendor profile found');
           }
 
           set({ isLoading: true, error: null });
           
+          console.log('Creating Stripe connect account for vendor:', user.vendor.id);
+          
           const response = await api.post(
-            stripeApi.createConnectAccount, 
+            stripeApi.createConnectAccount(user.vendor.id), 
             { accountType }, 
             accessToken
           );
@@ -974,15 +980,22 @@ const useAuthStore = create<AuthStore>()(
 
       getStripeAccountStatus: async () => {
         try {
-          const { accessToken } = get();
+          const state = get();
+          const { accessToken, user } = state;
           if (!accessToken) {
             throw new Error('Not authenticated');
+          }
+          
+          if (!user?.vendor?.id) {
+            throw new Error('No vendor profile found');
           }
 
           set({ isLoading: true, error: null });
           
+          console.log('Getting Stripe account status for vendor:', user.vendor.id);
+          
           const response = await api.get(
-            stripeApi.getAccountStatus, 
+            stripeApi.getAccountStatus(user.vendor.id), 
             accessToken
           );
           
@@ -991,7 +1004,6 @@ const useAuthStore = create<AuthStore>()(
           }
 
           // Update user vendor object with Stripe status
-          const { user } = get();
           if (user && user.vendor) {
             set({
               user: {
@@ -1039,15 +1051,23 @@ const useAuthStore = create<AuthStore>()(
 
       getStripeOnboardingLink: async () => {
         try {
-          const { accessToken } = get();
+          const state = get();
+          const { accessToken, user } = state;
           if (!accessToken) {
             throw new Error('Not authenticated');
+          }
+          
+          if (!user?.vendor?.id) {
+            throw new Error('No vendor profile found');
           }
 
           set({ isLoading: true, error: null });
           
-          const response = await api.get(
-            stripeApi.getOnboardingLink, 
+          console.log('Getting Stripe onboarding link for vendor:', user.vendor.id);
+          
+          const response = await api.post(
+            stripeApi.getOnboardingLink(user.vendor.id), 
+            {}, // Empty object for POST body
             accessToken
           );
           
@@ -1057,13 +1077,13 @@ const useAuthStore = create<AuthStore>()(
 
           set({
             stripeConnectData: {
-              ...get().stripeConnectData,
-              accountLinkUrl: response.url
+              ...state.stripeConnectData,
+              accountLinkUrl: response.accountLinkUrl
             },
             isLoading: false
           });
           
-          return response.url;
+          return response.accountLinkUrl;
         } catch (error: any) {
           set({ 
             error: error.message || 'Failed to get Stripe onboarding link', 

@@ -74,15 +74,23 @@ export const accountApi = {
 
 // Stripe Connect API routes
 export const stripeApi = {
-  // Connect account management
-  createConnectAccount: `/stripe/connect/account`,
-  getAccountStatus: `/stripe/connect/account/status`,
-  getOnboardingLink: `/stripe/connect/account/onboarding`,
-  updatePayoutSchedule: (vendorId: string): string => `/stripe/connect/account/payout-schedule/${vendorId}`,
+  // Create a Connect account for a vendor
+  createConnectAccount: (vendorId: string) => `/stripe/connect/accounts/${vendorId}`,
   
-  // Payment processing
-  createPaymentIntent: `/stripe/payment/intent`,
-  createMultiVendorPayment: `/stripe/payment/multi-vendor`,
+  // Generate an account onboarding link
+  getOnboardingLink: (vendorId: string) => `/stripe/connect/account-links/${vendorId}`,
+  
+  // Get vendor's Stripe account status
+  getAccountStatus: (vendorId: string) => `/stripe/connect/accounts/${vendorId}`,
+  
+  // Update vendor's payout schedule
+  updatePayoutSchedule: (vendorId: string) => `/stripe/connect/payout-schedule/${vendorId}`,
+  
+  // Create direct vendor connect link with Stripe hosted onboarding
+  createDirectLink: (vendorId: string) => `/stripe/connect/direct-link/${vendorId}`,
+  
+  // Disconnect a vendor's Stripe Connect account
+  disconnectAccount: (vendorId: string) => `/stripe/connect/accounts/${vendorId}`,
 };
 
 // Product API routes
@@ -107,96 +115,7 @@ export const productApi = {
 
 // Basic API helper functions
 export const api = {
-  // Get access token from cookies or localStorage
-  getAccessToken: (): string | null => {
-    // First try localStorage (most reliable across environments)
-    if (typeof window !== 'undefined') {
-      const localToken = localStorage.getItem('accessToken');
-      if (localToken) {
-        console.log('🔐 Using auth token from localStorage');
-        return localToken;
-      }
-    }
-    
-    // Then try cookies as fallback
-    if (typeof document !== 'undefined') {
-      // Parse cookies
-      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-        const [key, value] = cookie.trim().split('=');
-        acc[key.trim()] = value;
-        return acc;
-      }, {} as Record<string, string>);
-      
-      const cookieToken = cookies['accessToken'];
-      if (cookieToken) {
-        console.log('🔐 Using auth token from cookies');
-        return cookieToken;
-      }
-    }
-    
-    console.log('⚠️ No auth token found in storage');
-    return null;
-  },
-  
-  // Check if refresh token exists in cookies
-  hasRefreshToken: (): boolean => {
-    if (typeof document !== 'undefined') {
-      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-        const [key, value] = cookie.trim().split('=').map(part => part.trim());
-        acc[key] = value;
-        return acc;
-      }, {} as Record<string, string>);
-      
-      return !!cookies['refreshToken'];
-    }
-    return false;
-  },
-  
-  // Refresh the access token using refresh token
-  refreshAccessToken: async (): Promise<boolean> => {
-    try {
-      console.log('Attempting to refresh access token...');
-      
-      // We shouldn't use the axios instance directly to avoid interceptor loops
-      // Instead, we'll make a direct POST request to the refresh token endpoint
-      const response = await fetch(`${API_URL}${authApi.refreshToken}`, {
-        method: 'POST',
-        credentials: 'include', // Important for including cookies
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to refresh token: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data && data.accessToken) {
-        console.log('Access token refreshed successfully via api util');
-        
-        // Access the auth store directly to update the token
-        const authStore = (await import('../store/useAuthStore')).default;
-        authStore.setState({ 
-          accessToken: data.accessToken,
-          isAuthenticated: true
-        });
-        
-        // If user data is included, update that too
-        if (data.user) {
-          authStore.setState({ user: data.user });
-        }
-        
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Failed to refresh access token:', error);
-      return false;
-    }
-  },
-  
+  // HTTP methods
   get: async (url: string, token: string | null = null): Promise<any> => {
     try {
       // Get the freshest token available - either passed in or from localStorage
@@ -305,6 +224,123 @@ export const api = {
         return error.response.data;
       }
       return { error: error.message || 'Network error occurred' };
+    }
+  },
+  
+  patch: async (url: string, data: Record<string, any> = {}, token: string | null = null): Promise<any> => {
+    try {
+      // Get the freshest token available - either passed in or from localStorage
+      let accessToken = token;
+      if (!accessToken) {
+        accessToken = localStorage.getItem('accessToken');
+        if (accessToken) {
+          console.log(`🔐 Using fresh token from localStorage for PATCH ${url}`);
+        }
+      }
+      
+      const headers: Record<string, string> = {};
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+      
+      console.log(`Making PATCH request to ${url} with auth:`, !!accessToken);
+      const response = await axiosInstance.patch(url, data, { headers });
+      return response.data;
+    } catch (error: any) {
+      console.error(`API Error (PATCH ${url}):`, error);
+      if (error.response) {
+        // Server responded with an error
+        return error.response.data;
+      }
+      return { error: error.message || 'Network error occurred' };
+    }
+  },
+  
+  // Get access token from cookies or localStorage
+  getAccessToken: (): string | null => {
+    // First try localStorage (most reliable across environments)
+    if (typeof window !== 'undefined') {
+      const localToken = localStorage.getItem('accessToken');
+      if (localToken) {
+        console.log('🔐 Using auth token from localStorage');
+        return localToken;
+      }
+    }
+    
+    // Then try cookies as fallback
+    if (typeof document !== 'undefined') {
+      // Parse cookies
+      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=');
+        acc[key.trim()] = value;
+        return acc;
+      }, {} as Record<string, string>);
+      
+      const cookieToken = cookies['accessToken'];
+      if (cookieToken) {
+        console.log('🔐 Using auth token from cookies');
+        return cookieToken;
+      }
+    }
+    
+    console.log('⚠️ No auth token found in storage');
+    return null;
+  },
+  
+  // Check if refresh token exists in cookies
+  hasRefreshToken: (): boolean => {
+    if (typeof document !== 'undefined') {
+      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=').map(part => part.trim());
+        acc[key] = value;
+        return acc;
+      }, {} as Record<string, string>);
+      
+      return !!cookies['refreshToken'];
+    }
+    return false;
+  },
+  
+  // Refresh the access token using refresh token
+  refreshAccessToken: async (): Promise<boolean> => {
+    try {
+      console.log('Attempting to refresh access token...');
+      
+      // We shouldn't use the axios instance directly to avoid interceptor loops
+      // Instead, we'll make a direct POST request to the refresh token endpoint
+      const response = await fetch(`${API_URL}${authApi.refreshToken}`, {
+        method: 'POST',
+        credentials: 'include', // Important for including cookies
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to refresh token: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data && data.accessToken) {
+        console.log('Access token refreshed successfully via api util');
+        
+        // Access the auth store directly to update the token
+        const authStore = (await import('../store/useAuthStore')).default;
+        authStore.setState({ 
+          accessToken: data.accessToken,
+          isAuthenticated: true
+        });
+        
+        // If user data is included, update that too
+        if (data.user) {
+          authStore.setState({ user: data.user });
+        }
+        
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Failed to refresh access token:', error);
+      return false;
     }
   },
   

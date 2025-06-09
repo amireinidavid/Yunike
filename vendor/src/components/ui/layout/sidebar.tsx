@@ -145,7 +145,7 @@ const Sidebar = ({
       items: [
         { title: 'Account Settings', path: '/dashboard/account', icon: <Settings className="h-5 w-5" /> },
         { title: 'Settings', path: '/dashboard/settings', icon: <Settings className="h-5 w-5" /> },
-        { title: 'Stripe Connect', path: '/dashboard/settings/payments', icon: <CreditCard className="h-5 w-5" /> },
+        { title: 'Stripe Connect', path: '/dashboard/stripe-connect', icon: <CreditCard className="h-5 w-5" /> },
         { title: 'Profile', path: '/dashboard/profile', icon: <UserCog className="h-5 w-5" /> },
         { title: 'Help & Support', path: '/dashboard/help', icon: <HelpCircle className="h-5 w-5" /> }
       ]

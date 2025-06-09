@@ -1,5 +1,7 @@
 import { setupApiInterceptors } from './api';
 import useAuthStore from '../store/useAuthStore';
+// Import the API patches to ensure the extended methods are available
+import './apiPatches';
 
 /**
  * Initialize the authentication system

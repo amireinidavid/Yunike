@@ -23,12 +23,18 @@ const StripeConnectAccount = () => {
   // Check account status on component mount
   useEffect(() => {
     const checkStatus = async () => {
+      try {
+        if (user?.vendor?.id) {
       await getStripeAccountStatus();
+        } else {
+          console.warn('No vendor ID available for Stripe status check');
+        }
+      } catch (err) {
+        console.error('Error checking Stripe status:', err);
+      }
     };
 
-    if (user?.vendor?.id) {
       checkStatus();
-    }
   }, [user?.vendor?.id, getStripeAccountStatus]);
 
   // Handle account creation

@@ -75,10 +75,10 @@ const PaymentSettingsPage = () => {
                     <SelectValue placeholder="Select payout schedule" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="DAILY">Daily</SelectItem>
-                    <SelectItem value="WEEKLY">Weekly</SelectItem>
-                    <SelectItem value="BIWEEKLY">Bi-weekly</SelectItem>
-                    <SelectItem value="MONTHLY">Monthly</SelectItem>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="manual">Manual</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-gray-500">
